@@ -6,18 +6,18 @@
 
 ### 📚 Topics Covered
 
-| No. | Topic                              | Link                            |
-| --- | ---------------------------------- | ------------------------------- |
-| 01  | 🔏 Auth Guard-এর ৭টি ধাপ           | [View](./middlewares/README.md) |
-| 02  | 🔏 _req.user টাইপ ডিক্লেয়ার_       | [View](./middlewares/README.md) |
-| 03  | 🔏 Usage in Routes                 | [View](./middlewares/README.md) |
-| 04  | 🔏 Logout করে টোকেন blacklist করা  | [View](./middlewares/README.md) |
-| 05  | 🔏 _`checkRedisBlacklist()` ফাংশন_ | [View](./middlewares/README.md) |
-| 06  | 🔏 Comming Soon...                 | [View](./middlewares/)          |
-| 07  | 🔏 Comming Soon...                 | [View](./middlewares/)          |
-| 08  | 🔏 Comming Soon...                 | [View](./middlewares/)          |
-| 09  | 🔏 Comming Soon...                 | [View](./middlewares/)          |
-| 10  | 🔏 Comming Soon...                 | [View](./middlewares/)          |
+| No. | Topic                               | Link                            |
+| --- | ----------------------------------- | ------------------------------- |
+| 01  | 🔏 Auth Guard-এর ৭টি ধাপ            | [View](./middlewares/README.md) |
+| 02  | 🔏 _req.user টাইপ ডিক্লেয়ার_        | [View](./middlewares/README.md) |
+| 03  | 🔏 Usage in Routes                  | [View](./middlewares/README.md) |
+| 04  | 🔏 _Logout করে টোকেন blacklist করা_ | [View](./middlewares/README.md) |
+| 05  | 🔏 `checkRedisBlacklist()` ফাংশন    | [View](./middlewares/README.md) |
+| 06  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
+| 07  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
+| 08  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
+| 09  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
+| 10  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
 
 ---
 
