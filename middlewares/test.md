@@ -4,7 +4,8 @@
 
 এই প্যাকেজগুলো আপনার অ্যাপ্লিকেশনের রানটাইমে ব্যবহার হবে:
 
-```bash
+```bash 
+
 npm install express jsonwebtoken @prisma/client redis
 ```
 

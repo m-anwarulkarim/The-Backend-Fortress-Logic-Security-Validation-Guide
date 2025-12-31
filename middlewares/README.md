@@ -8,7 +8,7 @@
 - ভুল/অসম্পূর্ণ রিকোয়েস্ট ব্লক করা
 - সিস্টেমকে অপ্রয়োজনীয় লোড থেকে রক্ষা করা
 
-নিচে Auth Guard যে প্রধান ৭টি ধাপ অনুসরণ করে তা দেখানো হলো (প্রয়োজনে পরিবর্তন করতে পারেন):
+নিচে **Auth Guard** যে প্রধান ৭টি ধাপ অনুসরণ করে তা দেখানো হলো (প্রয়োজনে পরিবর্তন করতে পারেন) সাথে রয়েছে **req.user** টাইপ ডিক্লেয়ার, _Usage in Routes_, **Logout করে টোকেন blacklist করা** , _`checkRedisBlacklist()` ফাংশন_:
 
 ---
 
@@ -55,125 +55,7 @@
 Client Request ➡️ Middleware (চেকপোস্ট) ➡️ next() ➡️ Controller
 ```
 
-# ✅ 1) `checkRedisBlacklist()` ফাংশন
-
-```ts
-// src/utils/redis.ts
-import { createClient } from "redis";
-
-export const redis = createClient({
-  url: process.env.REDIS_URL,
-});
-
-redis.connect(); // এটাকে server.ts এর ভিতর connect করা হয়
-
-export async function checkRedisBlacklist(token: string): Promise<boolean> {
-  const exists = await redis.get(`blacklist:${token}`);
-  return exists ? true : false;
-}
-
-export async function addToBlacklist(token: string) {
-  // টোকেনের expiry কম হলে Redis TTL সেই অনুযায়ী সেট করতে হবে
-  await redis.set(`blacklist:${token}`, "true", { EX: 60 * 60 * 24 }); // 24 hours
-}
-```
-
-### ১. Redis ক্লায়েন্ট সেটআপ (Initialization)
-
-```ts
-export const redis = createClient({
-  url: process.env.REDIS_URL,
-});
-
-redis.connect();
-```
-
-- **কাজ:** এখানে `redis` লাইব্রেরি থেকে `createClient` ফাংশন ব্যবহার করে একটি কানেকশন অবজেক্ট তৈরি করা হয়েছে।
-- **URL:** `process.env.REDIS_URL` এর মাধ্যমে রেডিস সার্ভারের ঠিকানা (যেমন: `redis://localhost:6379`) নেওয়া হচ্ছে।
-- **Connect:** `redis.connect()` কল করার মাধ্যমে Node.js অ্যাপটি রেডিস ডাটাবেজের সাথে যোগাযোগ শুরু করে।
-
----
-
-### ২. টোকেন ব্ল্যাকলিস্ট চেক করা (Check Blacklist)
-
-```ts
-export async function checkRedisBlacklist(token: string): Promise<boolean> {
-  const exists = await redis.get(`blacklist:${token}`);
-  return exists ? true : false;
-}
-```
-
-- **উদ্দেশ্য:** যখনই কোনো ইউজার কোনো সিকিউর রাউটে রিকোয়েস্ট পাঠাবে, এই ফাংশনটি দিয়ে চেক করা হবে যে সেই টোকেনটি "বাতিল" বা "ব্ল্যাকলিস্টেড" কি না।
-- **কিভাবে কাজ করে:** এটি রেডিসে `blacklist:${token}` নামে কোনো ডাটা আছে কি না তা খোঁজে।
-- যদি ডাটা পাওয়া যায় (অর্থাৎ ইউজার আগে লগআউট করেছে), তবে এটি `true` পাঠাবে।
-- যদি না পাওয়া যায়, তবে `false` পাঠাবে।
-
----
-
-### ৩. টোকেন ব্ল্যাকলিস্টে যুক্ত করা (Add to Blacklist)
-
-```ts
-export async function addToBlacklist(token: string) {
-  await redis.set(`blacklist:${token}`, "true", { EX: 60 * 60 * 24 });
-}
-```
-
-- **উদ্দেশ্য:** এটি মূলত লগআউট ফাংশনের সময় ব্যবহৃত হয়।
-- **TTL (Time To Live):** এখানে `{ EX: 60 * 60 * 24 }` দেওয়া হয়েছে। এর মানে হলো রেডিসে এই টোকেনটি মাত্র **২৪ ঘণ্টা** থাকবে। ২৪ ঘণ্টা পর রেডিস অটোমেটিক এই ডাটাটি ডিলিট করে দেবে।
-- **কেন এটি দরকার:** ইউজারের JWT টোকেন যদি ২৪ ঘণ্টা মেয়াদের হয়, তবে ২৪ ঘণ্টা পর টোকেনটি এমনিতেই অকেজো হয়ে যাবে। তাই রেডিসে এটি আজীবন জমিয়ে রাখার প্রয়োজন নেই। এতে মেমোরি সাশ্রয় হয়।
-
----
-
-### এই পুরো সিস্টেমটি কেন দরকার? (Summary)
-
-JWT টোকেন একবার ইস্যু করলে তা সার্ভার থেকে সরাসরি ডিলিট করা যায় না (Stateless)। তাই ইউজার যদি লগআউটও করে, তার টোকেনটি দিয়ে রিকোয়েস্ট পাঠালে সার্ভার তা গ্রহণ করবে। এই সমস্যা সমাধানের জন্য:
-
-1. ইউজার লগআউট করলে তার টোকেনটি **Redis**-এ সেভ করে রাখা হয়।
-2. পরবর্তী প্রতি রিকোয়েস্টে চেক করা হয় টোকেনটি রেডিসে আছে কি না।
-3. যদি থাকে, তবে তাকে **"Unauthorized"** হিসেবে ব্লক করে দেওয়া হয়।
-
----
-
-# ✅ 2) Prisma ক্লায়েন্ট
-
-```ts
-// src/lib/prisma.ts
-// এটা prisma ব্যবহার করলে
-import { PrismaClient } from "@prisma/client";
-
-export const prisma = new PrismaClient();
-```
-
----
-
-# ✅ 3) Express Request টাইপ বাড়ানো (req.user টাইপ ডিক্লেয়ার)
-
-**কেন এটি করা হয়?**
-
-- Express-এর ডিফল্ট Request অবজেক্টের মধ্যে user নামে কোনো প্রপার্টি থাকে না। কিন্তু যখন অথেন্টিকেশন মিডলওয়্যার (Authentication Middleware) ব্যবহার করা হয় , তখন টোকেন ভেরিফাই করার পর ইউজারের তথ্য req.user এ রাখতে হয় । টাইপস্ক্রিপ্ট (TypeScript) এতে এরর দেয় কারণ সে req.user চেনে না।
-
-- কিভাবে কাজ করে (সম্ভাব্য কোড): সাধারণত একটি types.d.ts ফাইলে এভাবে লিখা হয়:
-
-```ts
-// src/types/express.d.ts
-import { User } from "@prisma/client";
-
-declare global {
-  namespace Express {
-    interface Request {
-      user?: User;
-    }
-  }
-}
-```
-
-- ব্যাখ্যা:
-  এটি টাইপস্ক্রিপ্টকে বলে দেয় যে, "দেখো, এক্সপ্রেসের যে Request টাইপ আছে, তার ভেতরে user নামেও একটি ফিল্ড থাকতে পারে।"
-  এর ফলে যখন কন্ট্রোলারের ভেতর req.user.id লিখা হবে, তখন টাইপস্ক্রিপ্ট আর কোনো এরর দেবে না এবং অটো-সাজেশন দেখাবে।
-
----
-
-# ✅ 4) **সম্পূর্ণ Auth Guard Middleware**
+# _✅ 1) \*\*সম্পূর্ণ Auth Guard Middleware_
 
 ```ts
 // src/middleware/authGuard.ts
@@ -287,9 +169,34 @@ next();
 
 সব চেক পাস করলে ইউজারের তথ্য `req.user` এ সেভ করে রাখা হয় যাতে পরবর্তী ফাংশন বা কন্ট্রোলারগুলো বুঝতে পারে কোন ইউজার রিকোয়েস্টটি পাঠিয়েছে। সবশেষে `next()` কল করে পরের ধাপে পাঠানো হয়।
 
+# _✅ 2) Express Request টাইপ বাড়ানো (req.user টাইপ ডিক্লেয়ার)_
+
+**কেন এটি করা হয়?**
+
+- Express-এর ডিফল্ট Request অবজেক্টের মধ্যে user নামে কোনো প্রপার্টি থাকে না। কিন্তু যখন অথেন্টিকেশন মিডলওয়্যার (Authentication Middleware) ব্যবহার করা হয় , তখন টোকেন ভেরিফাই করার পর ইউজারের তথ্য req.user এ রাখতে হয় । টাইপস্ক্রিপ্ট (TypeScript) এতে এরর দেয় কারণ সে req.user চেনে না।
+
+- কিভাবে কাজ করে (সম্ভাব্য কোড): সাধারণত একটি types.d.ts ফাইলে এভাবে লিখা হয়:
+
+```ts
+// src/types/express.d.ts
+import { User } from "@prisma/client";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: User;
+    }
+  }
+}
+```
+
+- ব্যাখ্যা:
+  এটি টাইপস্ক্রিপ্টকে বলে দেয় যে, "দেখো, এক্সপ্রেসের যে Request টাইপ আছে, তার ভেতরে user নামেও একটি ফিল্ড থাকতে পারে।"
+  এর ফলে যখন কন্ট্রোলারের ভেতর req.user.id লিখা হবে, তখন টাইপস্ক্রিপ্ট আর কোনো এরর দেবে না এবং অটো-সাজেশন দেখাবে।
+
 ---
 
-# ✅ 5) Usage in Routes উদাহরণ
+# _✅ 3) Usage in Routes উদাহরণ_
 
 ```ts
 // src/routes/user.routes.ts
@@ -299,121 +206,103 @@ import { userController } from "../controllers/user.controller";
 
 const router = express.Router();
 
-// শুধুমাত্র super_admin
 router.delete(
   "/delete-system-logs",
   authGuard("super_admin"),
   userController.deleteLogs
 );
 
-// admin + editor
 router.patch(
   "/update-article/:id",
   authGuard("admin", "editor"),
   userController.updateArticle
 );
 
-// শুধু লগইন হলেই হবে
 router.get("/me", authGuard(), userController.getMe);
 
 export default router;
 ```
 
-## নিচে বিস্তারিত ব্যাখ্যা দেওয়া হলো:
-
-### ১. নির্দিষ্ট রোলের জন্য অনুমতি (Super Admin Only)
+# _4) `checkRedisBlacklist()` ফাংশন_
 
 ```ts
-router.delete(
-  "/delete-system-logs",
-  authGuard("super_admin"),
-  userController.deleteLogs
-);
-```
+// src/utils/redis.ts
+import { createClient } from "redis";
 
-- **কাজ:** এখানে `authGuard` এ শুধুমাত্র `"super_admin"` পাস করা হয়েছে।
-- **ফলাফল:** কেউ যদি এই লিংকে ডিলিট রিকোয়েস্ট পাঠায়, তবে মিডলওয়্যারটি আগে চেক করবে তার রোলে `super_admin` লেখা আছে কি না। যদি অন্য কেউ (যেমন: `admin` বা `editor`) চেষ্টা করে, তবে তাকে আটকে দেওয়া হবে।
+export const redis = createClient({
+  url: process.env.REDIS_URL,
+});
 
-### ২. একাধিক রোলের অনুমতি (Admin + Editor)
+redis.connect(); // এটাকে server.ts এর ভিতর connect করা হয়
 
-```ts
-router.patch(
-  "/update-article/:id",
-  authGuard("admin", "editor"),
-  userController.updateArticle
-);
-```
+export async function checkRedisBlacklist(token: string): Promise<boolean> {
+  const exists = await redis.get(`blacklist:${token}`);
+  return exists ? true : false;
+}
 
-- **কাজ:** এখানে `authGuard` এ দুটি রোল দেওয়া হয়েছে: `"admin"` এবং `"editor"`।
-- **ফলাফল:** এই রুটে আর্টিকেল আপডেট করার ক্ষমতা `admin` এবং `editor` উভয়েরই থাকবে। অর্থাৎ, আপনার রোল যদি এই দুটির যেকোনো একটি হয়, তবে আপনি ভেতরে ঢুকতে পারবেন।
-
-### ৩. সাধারণ লগইন চেক (Logged-in User Only)
-
-```ts
-router.get("/me", authGuard(), userController.getMe);
-```
-
-- **কাজ:** এখানে `authGuard()` এর ভেতর কোনো নির্দিষ্ট রোল দেওয়া হয়নি।
-- **ফলাফল:** এর মানে হলো ইউজারটির যেকোনো রোল হতে পারে, কিন্তু তাকে অবশ্যই **সঠিকভাবে লগইন করা** থাকতে হবে এবং তার টোকেনটি ভ্যালিড হতে হবে। সাধারণত প্রোফাইল দেখার জন্য এটি ব্যবহৃত হয়।
-
----
-
-### কাজের প্রবাহ (Visual Representation)
-
-নিচের ডায়াগ্রামটি লক্ষ্য করলে বুঝতে পারবেন কীভাবে `authGuard` রিকোয়েস্টটিকে ফিল্টার করে:
-
----
-
-### কেন এই পদ্ধতিটি সেরা?
-
-| বৈশিষ্ট্য      | সুবিধা                                                                                                       |
-| -------------- | ------------------------------------------------------------------------------------------------------------ |
-| **Reusable**   | একই `authGuard` সব জায়গায় ব্যবহার করা যাচ্ছে।                                                                |
-| **Scalable**   | ভবিষ্যতে নতুন কোনো রোল (যেমন: `moderator`) আসলে শুধু প্যারামিটারে নাম লিখে দিলেই হবে।                        |
-| **Clean Code** | কন্ট্রোলারের ভেতর বারবার রোল চেক করার কোড লিখতে হচ্ছে না, রাউট ফাইলে দেখেই বোঝা যাচ্ছে কে কোথায় ঢুকতে পারবে। |
-
-**সারসংক্ষেপ:**
-আপনার এই কোডটি একটি **Role-Based Access Control (RBAC)** সিস্টেম। এটি নিশ্চিত করে যে:
-
-1. ইউজার লগইন করা কি না।
-2. ইউজারের টোকেন ব্ল্যাকলিস্টেড কি না।
-3. ইউজারের সেই নির্দিষ্ট কাজ করার অনুমতি (Role) আছে কি না।
-
----
-
-# ✅ 6) JWT Token Sign করার উদাহরণ
-
-```ts
-// src/utils/jwt.ts
-import jwt from "jsonwebtoken";
-// এটা সাধরনত login করার সময় করা হই
-
-export function generateToken(id: string) {
-  return jwt.sign({ id }, process.env.JWT_SECRET as string, {
-    expiresIn: "1d",
-  });
+export async function addToBlacklist(token: string) {
+  // টোকেনের expiry কম হলে Redis TTL সেই অনুযায়ী সেট করতে হবে
+  await redis.set(`blacklist:${token}`, "true", { EX: 60 * 60 * 24 }); // 24 hours
 }
 ```
 
-নিচে এর প্রতিটি অংশের কাজ ব্যাখ্যা করা হলো:
+### ১. Redis ক্লায়েন্ট সেটআপ (Initialization)
 
-### ১. `jwt.sign()` এর কাজ
+```ts
+export const redis = createClient({
+  url: process.env.REDIS_URL,
+});
 
-এটি একটি এনক্রিপ্টেড স্ট্রিং বা টোকেন তৈরি করে। এই ফাংশনটি ৩টি প্রধান জিনিস গ্রহণ করে:
+redis.connect();
+```
 
-- **Payload (`{ id }`):** টোকেনের ভেতরে আপনি কী তথ্য রাখতে চান। এখানে ইউজারের `id` রাখা হয়েছে। পরবর্তী প্রতিটি রিকোয়েস্টে এই `id` দেখেই সার্ভার ইউজারকে চিনতে পারবে।
-- **Secret Key (`process.env.JWT_SECRET`):** এটি আপনার সার্ভারের একটি গোপন পাসওয়ার্ড। এই কি (Key) ছাড়া কেউ টোকেনটি তৈরি বা পরিবর্তন করতে পারবে না।
-- **Options (`{ expiresIn: "1d" }`):** টোকেনটি কতক্ষণ কার্যকর থাকবে। এখানে "1d" মানে হলো ১ দিন পর এই টোকেনটি নিজে থেকেই এক্সপায়ার (Expire) বা অকেজো হয়ে যাবে।
-
----
-
-### ২. কেন এটি প্রয়োজন? (The Concept)
-
-সার্ভার সাধারণত ভুলে যায় কে রিকোয়েস্ট পাঠাচ্ছে (Stateless)। তাই লগইন করার পর সার্ভার ইউজারকে এই টোকেনটি দিয়ে দেয়। ইউজার এরপর যতবার ডাটা চাইবে, সে এই টোকেনটি সাথে পাঠাবে। সার্ভার তখন টোকেনটি ভেরিফাই করে দেখে যে এটি কি আপনার তৈরি করা সেই আসল টোকেন কি না।
+- **কাজ:** এখানে `redis` লাইব্রেরি থেকে `createClient` ফাংশন ব্যবহার করে একটি কানেকশন অবজেক্ট তৈরি করা হয়েছে।
+- **URL:** `process.env.REDIS_URL` এর মাধ্যমে রেডিস সার্ভারের ঠিকানা (যেমন: `redis://localhost:6379`) নেওয়া হচ্ছে।
+- **Connect:** `redis.connect()` কল করার মাধ্যমে Node.js অ্যাপটি রেডিস ডাটাবেজের সাথে যোগাযোগ শুরু করে।
 
 ---
 
-# ✅ 7) Logout করে টোকেন blacklist করা
+### ২. টোকেন ব্ল্যাকলিস্ট চেক করা (Check Blacklist)
+
+```ts
+export async function checkRedisBlacklist(token: string): Promise<boolean> {
+  const exists = await redis.get(`blacklist:${token}`);
+  return exists ? true : false;
+}
+```
+
+- **উদ্দেশ্য:** যখনই কোনো ইউজার কোনো সিকিউর রাউটে রিকোয়েস্ট পাঠাবে, এই ফাংশনটি দিয়ে চেক করা হবে যে সেই টোকেনটি "বাতিল" বা "ব্ল্যাকলিস্টেড" কি না।
+- **কিভাবে কাজ করে:** এটি রেডিসে `blacklist:${token}` নামে কোনো ডাটা আছে কি না তা খোঁজে।
+- যদি ডাটা পাওয়া যায় (অর্থাৎ ইউজার আগে লগআউট করেছে), তবে এটি `true` পাঠাবে।
+- যদি না পাওয়া যায়, তবে `false` পাঠাবে।
+
+---
+
+### ৩. টোকেন ব্ল্যাকলিস্টে যুক্ত করা (Add to Blacklist)
+
+```ts
+export async function addToBlacklist(token: string) {
+  await redis.set(`blacklist:${token}`, "true", { EX: 60 * 60 * 24 });
+}
+```
+
+- **উদ্দেশ্য:** এটি মূলত লগআউট ফাংশনের সময় ব্যবহৃত হয়।
+- **TTL (Time To Live):** এখানে `{ EX: 60 * 60 * 24 }` দেওয়া হয়েছে। এর মানে হলো রেডিসে এই টোকেনটি মাত্র **২৪ ঘণ্টা** থাকবে। ২৪ ঘণ্টা পর রেডিস অটোমেটিক এই ডাটাটি ডিলিট করে দেবে।
+- **কেন এটি দরকার:** ইউজারের JWT টোকেন যদি ২৪ ঘণ্টা মেয়াদের হয়, তবে ২৪ ঘণ্টা পর টোকেনটি এমনিতেই অকেজো হয়ে যাবে। তাই রেডিসে এটি আজীবন জমিয়ে রাখার প্রয়োজন নেই। এতে মেমোরি সাশ্রয় হয়।
+
+---
+
+### এই পুরো সিস্টেমটি কেন দরকার? (Summary)
+
+JWT টোকেন একবার ইস্যু করলে তা সার্ভার থেকে সরাসরি ডিলিট করা যায় না (Stateless)। তাই ইউজার যদি লগআউটও করে, তার টোকেনটি দিয়ে রিকোয়েস্ট পাঠালে সার্ভার তা গ্রহণ করবে। এই সমস্যা সমাধানের জন্য:
+
+1. ইউজার লগআউট করলে তার টোকেনটি **Redis**-এ সেভ করে রাখা হয়।
+2. পরবর্তী প্রতি রিকোয়েস্টে চেক করা হয় টোকেনটি রেডিসে আছে কি না।
+3. যদি থাকে, তবে তাকে **"Unauthorized"** হিসেবে ব্লক করে দেওয়া হয়।
+
+---
+
+# _✅ 5) Logout করে টোকেন blacklist করা_
 
 ```ts
 // src/controllers/auth.controller.ts
@@ -491,8 +380,3 @@ if (token) await addToBlacklist(token);
 Middleware হলো পুরো অ্যাপ্লিকেশনের “প্রথম নিরাপত্তা স্তর।”
 এটি ছাড়া API বা Backend কখনই নিরাপদ থাকেনা।
 সঠিক Middleware স্ট্রাকচার অ্যাপ্লিকেশনকে দ্রুত, নিরাপদ ও মেইন্টেইনেবল করে।
-
-```
-
-
-```
