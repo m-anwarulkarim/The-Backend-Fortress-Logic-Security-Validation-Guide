@@ -6,20 +6,18 @@
 
 ### 📚 Topics Covered
 
-| No. | Topic                               | Link                            |
-| --- | ----------------------------------- | ------------------------------- |
-| 01  | 🔏 Auth Guard-এর ৭টি ধাপ            | [View](./middlewares/README.md) |
-| 02  | 🔏 _req.user টাইপ ডিক্লেয়ার_        | [View](./middlewares/README.md) |
-| 03  | 🔏 Usage in Routes                  | [View](./middlewares/README.md) |
-| 04  | 🔏 _Logout করে টোকেন blacklist করা_ | [View](./middlewares/README.md) |
-| 05  | 🔏 `checkRedisBlacklist()` ফাংশন    | [View](./middlewares/README.md) |
-| 06  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
-| 07  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
-| 08  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
-| 09  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
-| 10  | 🔏 Comming Soon...                  | [View](./middlewares/)          |
-
----
+| No. | Topic                                                 | Link                                                    |
+| --- | ----------------------------------------------------- | ------------------------------------------------------- |
+| 01  | 🔏 Auth Guard-এর ৭টি ধাপ                              | [View](./middlewares/Role-BasedAuthMidd-row-Express.md) |
+| 02  | 🔏 req.user টাইপ ডিক্লেয়ার                            | [View](./middlewares/TypeOfReq.User.md)                 |
+| 03  | 🔏 Usage in Routes                                    | [View](./middlewares/README.md)                         |
+| 04  | 🔏 Role-Based Auth Middleware (Better Auth + Express) | [View](./middlewares/Role-Based-Auth-Middleware.md)     |
+| 05  | 🔏 comming Soon ...                                   | [View](./middlewares/README.md)                         |
+| 06  | 🔏 Comming Soon...                                    | [View](./middlewares/)                                  |
+| 07  | 🔏 Comming Soon...                                    | [View](./middlewares/)                                  |
+| 08  | 🔏 Comming Soon...                                    | [View](./middlewares/)                                  |
+| 09  | 🔏 Comming Soon...                                    | [View](./middlewares/)                                  |
+| 10  | 🔏 Comming Soon...                                    | [View](./middlewares/)                                  |
 
 ## 🛠️ টেকনোলজি স্ট্যাক
 

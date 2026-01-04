@@ -1,4 +1,4 @@
-# 🛡️ Middlewares Layer (নিরাপত্তা ও পাহারাদার স্তর)
+# 🛡️ Role-Based Auth Middleware (Row Express)
 
 ## 📌 পরিচিতি
 
@@ -49,7 +49,7 @@
 
 ---
 
-## 🚦 Middleware Workflow
+### 🚦 Middleware Workflow
 
 ```text
 Client Request ➡️ Middleware (চেকপোস্ট) ➡️ next() ➡️ Controller
@@ -64,7 +64,10 @@ import jwt from "jsonwebtoken";
 import { prisma } from "../lib/prisma";
 import { checkRedisBlacklist } from "../utils/redis";
 
-export const authGuard = (...Role: string[]) => {
+
+type ROLE = "admin" | "manager" | "user";
+
+export const authGuard = (...Role: ROLE[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
       // ১. Token Extraction
